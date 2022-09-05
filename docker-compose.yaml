@@ -1,0 +1,82 @@
+version: "3.9"
+
+services:
+  api:
+    build:
+      context: .
+    image: armenar/insta
+    ports:
+      - 80:80
+    volumes:
+      - ./docker_config.py:/code/default_config.py
+    depends_on:
+      pg:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+  migrations:
+    build:
+      context: .
+    image: armenar/insta
+    volumes:
+      - ./docker_config.py:/code/default_config.py
+    depends_on:
+       pg:
+        condition: service_healthy
+    command: flask db upgrade
+  pg:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: flask_app_user
+      POSTGRES_PASSWORD: flask_app_password
+      POSTGRES_DB: flask_app_db
+    volumes:
+      - ./pg_data/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isredy -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+
+
+#version: "3.9"  # версия Compose файла
+#
+#services:  # директива с контейнерами
+#  api:  # контейнер api приложения
+#    build:  # секция для сборки контейнера
+#      context: .  # из текущей директории
+#   image: armenar/insta  # образ сохранить в Docker Hub по логину armenar, название образа insta
+#    ports:  # секция для прокидки портов
+#      - 80:80
+#    volumes:  # секция для того чтоб не копировать docker_config.py default_config.py (14 стр. Dockerfile)
+#      - ./docker_config.py:/code/default_config.py
+#    depends_on:  # описываем у контейнера api очередность запуска контейнеров
+#      pg:  # сервис pg
+#        condition: service_healthy  # условие (postgres должна быть запущена и помечена докером как healthy)
+#      migrations:  # в контейнере api условие, будет опираться на контейнер migrations
+#        condition: service_completed_successfully  # условия должны быть успешно применены
+#  migrations:  # контейнер с миграциями
+#    build:  # секция для сборки контейнера
+#      context: .  # из текущей директории
+#   image: armenar/insta  # образ сохранить в Docker Hub по логину armenar, название образа insta
+#    volumes:  # секция для того чтоб не копировать docker_config.py default_config.py (14 стр. Dockerfile)
+#      - ./docker_config.py:/code/default_config.py
+#    depends_on:  # описываем у контейнера migrations очередность запуска контейнеров
+#       pg:  # сервис pg
+#        condition: service_healthy  # условие (postgres должна быть запущена и помечена докером как healthy)
+#    command: flask db upgrade # функционал переопределяем команду с 16 строки файла Dockerfile
+#  pg:  # контейнер с БД postgres (готовый образ, собирать не надо)
+#    image: postgres:latest  # секция вида последний
+#    environment:  # секция для определения с помощью переменных пользователя, пароли и название БД
+#      POSTGRES_USER: flask_app_user
+#      POSTGRES_PASSWORD: flask_app_password
+#      POSTGRES_DB: flask_app_db
+#    volumes:  # секция для того, чтоб оставить данные при создании postgres в указанной директории
+#      - ./pg_data/var/lib/postgresql/data
+#    healthcheck:  # секция для того, чтоб контейнер помечался здоровый или нет папка
+#      test: ["CMD-SHELL", "pg_isredy -U postgres"]  # в секции указываем команды, которые хотим запустить:
+#      # 'pg_isredy -U postgres' встроенная в postgres команда, которая убеждается в том БД готова обрабатывать запросы
+#      interval: 5s  # интервал если БД не готова, значит попытка провалилась и берёт таймаут
+#      timeout: 5s  # время, через которое будет произведена очередная попытка проверки БД
+#      retries: 5  # пометить контейнер, как нездоровый нужно 5 провальных попыток
